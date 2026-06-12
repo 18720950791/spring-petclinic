@@ -17,6 +17,8 @@ package org.springframework.samples.petclinic.repository.jpa;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -114,6 +116,67 @@ public class JpaOwnerRepositoryImpl implements OwnerRepository {
         query.setMaxResults(pageable.getPageSize());
         List<Owner> owners = query.getResultList();
         Query countQuery = this.em.createQuery("SELECT COUNT(owner) FROM Owner owner");
+        long total = (long) countQuery.getSingleResult();
+        return new PageImpl<>(owners, pageable, total);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Page<Owner> findAll(String lastName, String city, String telephone, Pageable pageable) throws DataAccessException {
+        StringBuilder jpql = new StringBuilder("SELECT owner FROM Owner owner WHERE 1=1");
+        StringBuilder countJpql = new StringBuilder("SELECT COUNT(owner) FROM Owner owner WHERE 1=1");
+
+        if (lastName != null && !lastName.isBlank()) {
+            jpql.append(" AND owner.lastName LIKE :lastName");
+            countJpql.append(" AND owner.lastName LIKE :lastName");
+        }
+        if (city != null && !city.isBlank()) {
+            jpql.append(" AND owner.city LIKE :city");
+            countJpql.append(" AND owner.city LIKE :city");
+        }
+        if (telephone != null && !telephone.isBlank()) {
+            jpql.append(" AND owner.telephone LIKE :telephone");
+            countJpql.append(" AND owner.telephone LIKE :telephone");
+        }
+
+        // Whitelist allowed sort properties
+        Set<String> allowedSortProperties = Set.of("lastName", "city", "id");
+        String orderBy = "owner.id";
+        if (pageable.getSort().isSorted()) {
+            String mapped = pageable.getSort().stream()
+                .filter(order -> allowedSortProperties.contains(order.getProperty()))
+                .map(order -> {
+                    String prop = "id".equals(order.getProperty()) ? "owner.id"
+                        : "lastName".equals(order.getProperty()) ? "owner.lastName" : "owner.city";
+                    return prop + (order.isDescending() ? " DESC" : " ASC");
+                })
+                .collect(Collectors.joining(", "));
+            if (!mapped.isEmpty()) {
+                orderBy = mapped;
+            }
+        }
+        jpql.append(" ORDER BY ").append(orderBy);
+
+        Query query = this.em.createQuery(jpql.toString());
+        Query countQuery = this.em.createQuery(countJpql.toString());
+
+        if (lastName != null && !lastName.isBlank()) {
+            query.setParameter("lastName", lastName + "%");
+            countQuery.setParameter("lastName", lastName + "%");
+        }
+        if (city != null && !city.isBlank()) {
+            query.setParameter("city", city + "%");
+            countQuery.setParameter("city", city + "%");
+        }
+        if (telephone != null && !telephone.isBlank()) {
+            query.setParameter("telephone", telephone + "%");
+            countQuery.setParameter("telephone", telephone + "%");
+        }
+
+        query.setFirstResult((int) pageable.getOffset());
+        query.setMaxResults(pageable.getPageSize());
+
+        List<Owner> owners = query.getResultList();
         long total = (long) countQuery.getSingleResult();
         return new PageImpl<>(owners, pageable, total);
     }

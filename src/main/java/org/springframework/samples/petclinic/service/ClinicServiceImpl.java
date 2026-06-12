@@ -132,6 +132,12 @@ public class ClinicServiceImpl implements ClinicService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Page<Owner> findOwners(String lastName, String city, String telephone, Pageable pageable) throws DataAccessException {
+        return ownerRepository.findAll(lastName, city, telephone, pageable);
+    }
+
+    @Override
     @Transactional
     public void deleteOwner(Owner owner) throws DataAccessException {
         ownerRepository.delete(owner);

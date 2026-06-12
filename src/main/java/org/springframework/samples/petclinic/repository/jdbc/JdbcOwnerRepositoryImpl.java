@@ -40,6 +40,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * A simple JDBC-based implementation of the {@link OwnerRepository} interface.
@@ -208,6 +210,63 @@ public class JdbcOwnerRepositoryImpl implements OwnerRepository {
             Long.class
         );
         return new PageImpl<>(owners, pageable, total == null ? 0 : total);
+    }
+
+    @Override
+    public Page<Owner> findAll(String lastName, String city, String telephone, Pageable pageable) throws DataAccessException {
+        StringBuilder sql = new StringBuilder("SELECT id, first_name, last_name, address, city, telephone FROM owners WHERE 1=1");
+        StringBuilder countSql = new StringBuilder("SELECT COUNT(*) FROM owners WHERE 1=1");
+        Map<String, Object> params = new HashMap<>();
+
+        appendOwnerFilters(sql, countSql, params, lastName, city, telephone);
+
+        // Sorting — whitelist allowed columns to prevent SQL injection
+        Set<String> allowedSortColumns = Set.of("lastName", "city", "id");
+        String orderBy = "id";
+        if (pageable.getSort().isSorted()) {
+            String mapped = pageable.getSort().stream()
+                .filter(order -> allowedSortColumns.contains(order.getProperty()))
+                .map(order -> {
+                    String col = "lastName".equals(order.getProperty()) ? "last_name"
+                        : "city".equals(order.getProperty()) ? "city" : "id";
+                    return col + (order.isDescending() ? " DESC" : " ASC");
+                })
+                .collect(Collectors.joining(", "));
+            if (!mapped.isEmpty()) {
+                orderBy = mapped;
+            }
+        }
+        sql.append(" ORDER BY ").append(orderBy);
+
+        sql.append(" LIMIT :size OFFSET :offset");
+        params.put("size", pageable.getPageSize());
+        params.put("offset", pageable.getOffset());
+
+        List<Owner> owners = this.namedParameterJdbcTemplate.query(
+            sql.toString(), params, BeanPropertyRowMapper.newInstance(Owner.class));
+        loadOwnersPetsAndVisits(owners);
+
+        Long total = this.namedParameterJdbcTemplate.queryForObject(countSql.toString(), params, Long.class);
+        return new PageImpl<>(owners, pageable, total == null ? 0 : total);
+    }
+
+    private void appendOwnerFilters(StringBuilder sql, StringBuilder countSql, Map<String, Object> params,
+                                    String lastName, String city, String telephone) {
+        if (lastName != null && !lastName.isBlank()) {
+            sql.append(" AND last_name LIKE :lastName");
+            countSql.append(" AND last_name LIKE :lastName");
+            params.put("lastName", lastName + "%");
+        }
+        if (city != null && !city.isBlank()) {
+            sql.append(" AND city LIKE :city");
+            countSql.append(" AND city LIKE :city");
+            params.put("city", city + "%");
+        }
+        if (telephone != null && !telephone.isBlank()) {
+            sql.append(" AND telephone LIKE :telephone");
+            countSql.append(" AND telephone LIKE :telephone");
+            params.put("telephone", telephone + "%");
+        }
     }
 
 	@Override

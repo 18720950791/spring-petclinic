@@ -48,6 +48,17 @@ public interface OwnerRepository {
     Page<Owner> findByLastName(String lastName, Pageable pageable) throws DataAccessException;
 
     /**
+     * Retrieve a paged, filtered, and sorted list of {@link Owner}s.
+     *
+     * @param lastName  last-name prefix filter (may be {@code null})
+     * @param city      city prefix filter (may be {@code null})
+     * @param telephone telephone prefix filter (may be {@code null})
+     * @param pageable  pagination and sorting information
+     * @return a {@link Page} of matching owners
+     */
+    Page<Owner> findAll(String lastName, String city, String telephone, Pageable pageable) throws DataAccessException;
+
+    /**
      * Retrieve an <code>Owner</code> from the data store by id.
      *
      * @param id the id to search for

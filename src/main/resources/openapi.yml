@@ -147,6 +147,20 @@ paths:
           schema:
             type: string
             example: Davis
+        - name: city
+          in: query
+          description: City.
+          required: false
+          schema:
+            type: string
+            example: Madison
+        - name: telephone
+          in: query
+          description: Telephone number.
+          required: false
+          schema:
+            type: string
+            example: "6085551023"
         - name: page
           in: query
           description: Zero-based page index.
@@ -168,6 +182,16 @@ paths:
             maximum: 100
             default: 20
             example: 5
+        - name: sort
+          in: query
+          description: "Sort field. Supported values: lastName, city. Defaults to id if omitted."
+          required: false
+          schema:
+            type: string
+            enum:
+              - lastName
+              - city
+            example: lastName
       responses:
         200:
           description: Owner page found and returned.

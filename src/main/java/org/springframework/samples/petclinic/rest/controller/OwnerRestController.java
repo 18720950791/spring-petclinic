@@ -19,6 +19,7 @@ package org.springframework.samples.petclinic.rest.controller;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -100,12 +101,28 @@ public class OwnerRestController implements OwnersApi, V2Api {
 
     @PreAuthorize("hasRole(@roles.OWNER_ADMIN)")
     @Override
-    public ResponseEntity<OwnerPageDto> listOwnersPage(String lastName, Integer page, Integer size) {
+    public ResponseEntity<OwnerPageDto> listOwnersPage(String lastName, String city, String telephone,
+                                                        Integer page, Integer size, String sort) {
         int pageNumber = page == null ? 0 : page;
         int pageSize = size == null ? 20 : size;
+
+        // Validate page and size
+        if (pageNumber < 0 || pageSize < 1 || pageSize > 100) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        // Resolve sort — whitelist only allowed fields
+        Set<String> allowedSortFields = Set.of("lastName", "city");
+        Sort sortObj;
+        if (sort != null && allowedSortFields.contains(sort)) {
+            sortObj = Sort.by(sort);
+        } else {
+            sortObj = Sort.by("id");
+        }
+
         Page<Owner> owners = this.clinicService.findOwners(
-            lastName,
-            PageRequest.of(pageNumber, pageSize, Sort.by("id")));
+            lastName, city, telephone,
+            PageRequest.of(pageNumber, pageSize, sortObj));
         return new ResponseEntity<>(ownerMapper.toOwnerPageDto(owners), HttpStatus.OK);
     }
 

@@ -366,6 +366,68 @@ abstract class AbstractClinicServiceTests {
     }
 
     @Test
+    void shouldFindOwnersPageWithFilters(){
+        // Filter by city only — "Sun Prairie" matches Betty Davis
+        Page<Owner> owners = this.clinicService.findOwners(null, "Sun Prairie", null, PageRequest.of(0, 10, Sort.by("id")));
+        assertThat(owners.getTotalElements()).isEqualTo(1);
+        assertThat(owners.getContent().get(0).getLastName()).isEqualTo("Davis");
+        assertThat(owners.getContent().get(0).getFirstName()).isEqualTo("Betty");
+    }
+
+    @Test
+    void shouldFindOwnersPageWithLastNameAndCityFilter(){
+        // Filter by lastName=Davis AND city=Sun Prairie → Betty Davis only (not Harold Davis, who lives in Windsor)
+        Page<Owner> owners = this.clinicService.findOwners("Davis", "Sun Prairie", null, PageRequest.of(0, 10, Sort.by("id")));
+        assertThat(owners.getTotalElements()).isEqualTo(1);
+        assertThat(owners.getContent().get(0).getFirstName()).isEqualTo("Betty");
+    }
+
+    @Test
+    void shouldFindOwnersPageWithTelephoneFilter(){
+        // Filter by telephone prefix "608" should match multiple owners
+        Page<Owner> owners = this.clinicService.findOwners(null, null, "608", PageRequest.of(0, 100, Sort.by("id")));
+        assertThat(owners.getTotalElements()).isGreaterThan(1);
+        assertThat(owners.getContent()).allMatch(o -> o.getTelephone().startsWith("608"));
+    }
+
+    @Test
+    void shouldFindOwnersPageWithNoFiltersReturnsAll(){
+        // All null filters should return same as unfiltered findAll
+        Page<Owner> filtered = this.clinicService.findOwners(null, null, null, PageRequest.of(0, 100, Sort.by("id")));
+        Page<Owner> all = this.clinicService.findOwners(null, PageRequest.of(0, 100, Sort.by("id")));
+        assertThat(filtered.getTotalElements()).isEqualTo(all.getTotalElements());
+    }
+
+    @Test
+    void shouldFindOwnersPageSortedByLastName(){
+        Page<Owner> owners = this.clinicService.findOwners(null, null, null, PageRequest.of(0, 10, Sort.by("lastName")));
+        assertThat(owners.getTotalElements()).isGreaterThan(1);
+        // Verify ascending sort by lastName
+        for (int i = 0; i < owners.getContent().size() - 1; i++) {
+            assertThat(owners.getContent().get(i).getLastName())
+                .isLessThanOrEqualTo(owners.getContent().get(i + 1).getLastName());
+        }
+    }
+
+    @Test
+    void shouldFindOwnersPageSortedByCity(){
+        Page<Owner> owners = this.clinicService.findOwners(null, null, null, PageRequest.of(0, 10, Sort.by("city")));
+        assertThat(owners.getTotalElements()).isGreaterThan(1);
+        // Verify ascending sort by city
+        for (int i = 0; i < owners.getContent().size() - 1; i++) {
+            assertThat(owners.getContent().get(i).getCity())
+                .isLessThanOrEqualTo(owners.getContent().get(i + 1).getCity());
+        }
+    }
+
+    @Test
+    void shouldFindOwnersPageEmptyResultForNonexistentCity(){
+        Page<Owner> owners = this.clinicService.findOwners(null, "NonexistentCity", null, PageRequest.of(0, 10, Sort.by("id")));
+        assertThat(owners.getTotalElements()).isEqualTo(0);
+        assertThat(owners.getContent()).isEmpty();
+    }
+
+    @Test
     @Transactional
     void shouldDeleteOwner(){
     	Owner owner = this.clinicService.findOwnerById(1);
