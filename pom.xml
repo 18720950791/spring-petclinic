@@ -37,7 +37,7 @@
         <maven.rat-plugin.version>0.18</maven.rat-plugin.version>
         <maven.refactor-first-plugin.version>0.8.0</maven.refactor-first-plugin.version>
         <maven.release-plugin.version>3.1.1</maven.release-plugin.version>
-        <maven.site-plugin.version>3.21.0</maven.site-plugin.version>
+        <maven.site-plugin.version>3.22.0</maven.site-plugin.version>
         <maven.spotbugs-plugin.version>4.8.6.6</maven.spotbugs-plugin.version>
         <maven.version>3.9.9</maven.version>
 
