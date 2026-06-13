@@ -27,6 +27,9 @@ import org.springframework.boot.sql.init.dependency.DependsOnDatabaseInitializat
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -145,6 +148,56 @@ public class JdbcPetRepositoryImpl implements PetRepository {
 		}
 		return pets;
 	}
+
+    @Override
+    public Page<Pet> findPets(String name, String type, Integer ownerId, Pageable pageable) throws DataAccessException {
+        Map<String, Object> params = new HashMap<>();
+        StringBuilder where = new StringBuilder(" WHERE 1=1");
+        boolean joinTypes = type != null;
+        if (name != null) {
+            where.append(" AND pets.name = :name");
+            params.put("name", name);
+        }
+        if (type != null) {
+            where.append(" AND types.name = :type");
+            params.put("type", type);
+        }
+        if (ownerId != null) {
+            where.append(" AND pets.owner_id = :ownerId");
+            params.put("ownerId", ownerId);
+        }
+        String join = joinTypes ? " JOIN types ON pets.type_id = types.id" : "";
+
+        Long total = this.namedParameterJdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM pets" + join + where, params, Long.class);
+        long totalCount = total == null ? 0 : total;
+
+        params.put("size", pageable.getPageSize());
+        params.put("offset", pageable.getOffset());
+        Collection<JdbcPet> jdbcPets = this.namedParameterJdbcTemplate.query(
+            "SELECT pets.id as pets_id, pets.name, pets.birth_date, pets.type_id, pets.owner_id FROM pets"
+                + join + where + " ORDER BY pets.id LIMIT :size OFFSET :offset",
+            params,
+            new JdbcPetRowMapper());
+
+        List<Pet> pets = new ArrayList<>();
+        if (!jdbcPets.isEmpty()) {
+            Collection<PetType> petTypes = this.namedParameterJdbcTemplate.query(
+                "SELECT id, name FROM types ORDER BY name",
+                new HashMap<String, Object>(),
+                BeanPropertyRowMapper.newInstance(PetType.class));
+            Collection<Owner> owners = this.namedParameterJdbcTemplate.query(
+                "SELECT id, first_name, last_name, address, city, telephone FROM owners ORDER BY last_name",
+                new HashMap<String, Object>(),
+                BeanPropertyRowMapper.newInstance(Owner.class));
+            for (JdbcPet jdbcPet : jdbcPets) {
+                jdbcPet.setType(EntityUtils.getById(petTypes, PetType.class, jdbcPet.getTypeId()));
+                jdbcPet.setOwner(EntityUtils.getById(owners, Owner.class, jdbcPet.getOwnerId()));
+                pets.add(jdbcPet);
+            }
+        }
+        return new PageImpl<>(pets, pageable, totalCount);
+    }
 
 	@Override
 	public void delete(Pet pet) throws DataAccessException {

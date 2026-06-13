@@ -21,6 +21,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.samples.petclinic.mapper.PetMapper;
 import org.springframework.samples.petclinic.model.Pet;
@@ -41,11 +44,9 @@ import tools.jackson.databind.json.JsonMapper;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -125,28 +126,79 @@ class PetRestControllerTests {
 
     @Test
     @WithMockUser(roles = "OWNER_ADMIN")
-    void testGetAllPetsSuccess() throws Exception {
-        final Collection<Pet> mockPets = petMapper.toPets(this.pets);
-        when(this.clinicService.findAllPets()).thenReturn(mockPets);
+    void testListPetsSuccess() throws Exception {
+        var pageRequest = PageRequest.of(0, 20, Sort.by("id"));
+        var pageContent = petMapper.toPets(this.pets).stream().toList();
+        given(this.clinicService.findPets(null, null, null, pageRequest))
+            .willReturn(new PageImpl<>(pageContent, pageRequest, pageContent.size()));
 
         this.mockMvc.perform(get("/api/pets")
                 .accept(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk())
             .andExpect(content().contentType("application/json"))
-            .andExpect(jsonPath("$.[0].id").value(3))
-            .andExpect(jsonPath("$.[0].name").value("Rosy"))
-            .andExpect(jsonPath("$.[1].id").value(4))
-            .andExpect(jsonPath("$.[1].name").value("Jewel"));
+            .andExpect(jsonPath("$.content[0].id").value(3))
+            .andExpect(jsonPath("$.content[0].name").value("Rosy"))
+            .andExpect(jsonPath("$.content[1].id").value(4))
+            .andExpect(jsonPath("$.content[1].name").value("Jewel"))
+            .andExpect(jsonPath("$.page").value(0))
+            .andExpect(jsonPath("$.size").value(20))
+            .andExpect(jsonPath("$.totalElements").value(2))
+            .andExpect(jsonPath("$.totalPages").value(1));
     }
 
     @Test
     @WithMockUser(roles = "OWNER_ADMIN")
-    void testGetAllPetsNotFound() throws Exception {
-        pets.clear();
-        given(this.clinicService.findAllPets()).willReturn(petMapper.toPets(pets));
-        this.mockMvc.perform(get("/api/pets")
+    void testListPetsEmptyResult() throws Exception {
+        var pageRequest = PageRequest.of(0, 20, Sort.by("id"));
+        given(this.clinicService.findPets("Nonexistent", null, null, pageRequest))
+            .willReturn(new PageImpl<>(new ArrayList<Pet>(), pageRequest, 0));
+
+        this.mockMvc.perform(get("/api/pets?name=Nonexistent")
                 .accept(MediaType.APPLICATION_JSON))
-            .andExpect(status().isNotFound());
+            .andExpect(status().isOk())
+            .andExpect(content().contentType("application/json"))
+            .andExpect(jsonPath("$.content").isArray())
+            .andExpect(jsonPath("$.content").isEmpty())
+            .andExpect(jsonPath("$.page").value(0))
+            .andExpect(jsonPath("$.size").value(20))
+            .andExpect(jsonPath("$.totalElements").value(0))
+            .andExpect(jsonPath("$.totalPages").value(0));
+    }
+
+    @Test
+    @WithMockUser(roles = "OWNER_ADMIN")
+    void testListPetsWithCombinedFilters() throws Exception {
+        var pageRequest = PageRequest.of(0, 5, Sort.by("id"));
+        var pageContent = petMapper.toPets(this.pets.subList(0, 1)).stream().toList();
+        given(this.clinicService.findPets("Rosy", "dog", 1, pageRequest))
+            .willReturn(new PageImpl<>(pageContent, pageRequest, 1));
+
+        this.mockMvc.perform(get("/api/pets?name=Rosy&type=dog&ownerId=1&page=0&size=5")
+                .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType("application/json"))
+            .andExpect(jsonPath("$.content[0].id").value(3))
+            .andExpect(jsonPath("$.content[0].name").value("Rosy"))
+            .andExpect(jsonPath("$.page").value(0))
+            .andExpect(jsonPath("$.size").value(5))
+            .andExpect(jsonPath("$.totalElements").value(1))
+            .andExpect(jsonPath("$.totalPages").value(1));
+    }
+
+    @Test
+    @WithMockUser(roles = "OWNER_ADMIN")
+    void testListPetsInvalidPaginationParams() throws Exception {
+        this.mockMvc.perform(get("/api/pets?size=0")
+                .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isBadRequest());
+
+        this.mockMvc.perform(get("/api/pets?page=-1")
+                .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isBadRequest());
+
+        this.mockMvc.perform(get("/api/pets?size=101")
+                .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isBadRequest());
     }
 
     @Test

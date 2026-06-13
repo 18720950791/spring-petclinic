@@ -1,13 +1,17 @@
 package org.springframework.samples.petclinic.mapper;
 
+import org.jspecify.annotations.NonNull;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.springframework.data.domain.Page;
 import org.springframework.samples.petclinic.model.Pet;
 import org.springframework.samples.petclinic.model.PetType;
 import org.springframework.samples.petclinic.rest.dto.PetDto;
 import org.springframework.samples.petclinic.rest.dto.PetFieldsDto;
+import org.springframework.samples.petclinic.rest.dto.PetPageDto;
 import org.springframework.samples.petclinic.rest.dto.PetTypeDto;
 
+import java.util.ArrayList;
 import java.util.Collection;
 
 /**
@@ -36,4 +40,14 @@ public interface PetMapper {
     PetType toPetType(PetTypeDto petTypeDto);
 
     Collection<PetTypeDto> toPetTypeDtos(Collection<PetType> petTypes);
+
+    default PetPageDto toPetPageDto(@NonNull Page<Pet> petPage) {
+        PetPageDto petPageDto = new PetPageDto();
+        petPageDto.setContent(new ArrayList<>(toPetsDto(petPage.getContent())));
+        petPageDto.setPage(petPage.getNumber());
+        petPageDto.setSize(petPage.getSize());
+        petPageDto.setTotalElements(petPage.getTotalElements());
+        petPageDto.setTotalPages(petPage.getTotalPages());
+        return petPageDto;
+    }
 }
