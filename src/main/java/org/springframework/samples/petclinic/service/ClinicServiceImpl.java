@@ -69,6 +69,12 @@ public class ClinicServiceImpl implements ClinicService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Page<Pet> findPets(String name, String typeName, Integer ownerId, Pageable pageable) throws DataAccessException {
+        return petRepository.findPets(name, typeName, ownerId, pageable);
+    }
+
+    @Override
     @Transactional
     public void deletePet(Pet pet) throws DataAccessException {
         petRepository.delete(pet);

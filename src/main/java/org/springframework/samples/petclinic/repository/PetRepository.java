@@ -19,6 +19,8 @@ import java.util.Collection;
 import java.util.List;
 
 import org.springframework.dao.DataAccessException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.samples.petclinic.model.BaseEntity;
 import org.springframework.samples.petclinic.model.Pet;
 import org.springframework.samples.petclinic.model.PetType;
@@ -66,6 +68,17 @@ public interface PetRepository {
      * found)
      */
 	Collection<Pet> findAll() throws DataAccessException;
+
+    /**
+     * Retrieve <code>Pet</code>s from the data store with optional filtering and pagination.
+     *
+     * @param name     optional name prefix filter (matches pets whose name starts with this value)
+     * @param typeName optional pet type name filter (exact match)
+     * @param ownerId  optional owner ID filter (exact match)
+     * @param pageable pagination information
+     * @return a <code>Page</code> of <code>Pet</code>s matching the criteria
+     */
+    Page<Pet> findPets(String name, String typeName, Integer ownerId, Pageable pageable) throws DataAccessException;
 
     /**
      * Delete an <code>Pet</code> to the data store by <code>Pet</code>.

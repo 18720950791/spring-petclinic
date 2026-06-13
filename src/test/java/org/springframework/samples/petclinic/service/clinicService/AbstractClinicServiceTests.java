@@ -213,6 +213,55 @@ abstract class AbstractClinicServiceTests {
     }
 
     @Test
+    void shouldFindPetsPage() {
+        Page<Pet> pets = this.clinicService.findPets(null, null, null, PageRequest.of(0, 5, Sort.by("id")));
+        assertThat(pets.getTotalElements()).isEqualTo(13);
+        assertThat(pets.getTotalPages()).isEqualTo(3);
+        assertThat(pets.getContent()).hasSize(5);
+        assertThat(pets.getContent().get(0).getName()).isEqualTo("Leo");
+    }
+
+    @Test
+    void shouldFindPetsPageByName() {
+        Page<Pet> pets = this.clinicService.findPets("Leo", null, null, PageRequest.of(0, 20, Sort.by("id")));
+        assertThat(pets.getTotalElements()).isEqualTo(1);
+        assertThat(pets.getContent()).hasSize(1);
+        assertThat(pets.getContent().get(0).getName()).isEqualTo("Leo");
+    }
+
+    @Test
+    void shouldFindPetsPageByTypeName() {
+        Page<Pet> pets = this.clinicService.findPets(null, "dog", null, PageRequest.of(0, 20, Sort.by("id")));
+        assertThat(pets.getTotalElements()).isEqualTo(4);
+        assertThat(pets.getContent()).extracting(Pet::getName)
+            .containsExactly("Rosy", "Jewel", "Mulligan", "Lucky");
+    }
+
+    @Test
+    void shouldFindPetsPageByOwnerId() {
+        Page<Pet> pets = this.clinicService.findPets(null, null, 3, PageRequest.of(0, 20, Sort.by("id")));
+        assertThat(pets.getTotalElements()).isEqualTo(2);
+        assertThat(pets.getContent()).extracting(Pet::getName)
+            .containsExactly("Rosy", "Jewel");
+    }
+
+    @Test
+    void shouldFindPetsPageCombined() {
+        Page<Pet> pets = this.clinicService.findPets("Lucky", "dog", null, PageRequest.of(0, 20, Sort.by("id")));
+        assertThat(pets.getTotalElements()).isEqualTo(1);
+        assertThat(pets.getContent()).hasSize(1);
+        assertThat(pets.getContent().get(0).getName()).isEqualTo("Lucky");
+        assertThat(pets.getContent().get(0).getType().getName()).isEqualTo("dog");
+    }
+
+    @Test
+    void shouldFindPetsPageEmptyResult() {
+        Page<Pet> pets = this.clinicService.findPets("NonExistent", null, null, PageRequest.of(0, 20, Sort.by("id")));
+        assertThat(pets.getTotalElements()).isEqualTo(0);
+        assertThat(pets.getContent()).isEmpty();
+    }
+
+    @Test
     @Transactional
     void shouldDeletePet(){
         Pet pet = this.clinicService.findPetById(1);

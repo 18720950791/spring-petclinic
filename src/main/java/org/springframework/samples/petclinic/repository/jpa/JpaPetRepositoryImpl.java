@@ -20,9 +20,13 @@ import java.util.List;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.Query;
 
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DataAccessException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.samples.petclinic.model.Pet;
 import org.springframework.samples.petclinic.model.PetType;
 import org.springframework.samples.petclinic.repository.PetRepository;
@@ -69,6 +73,50 @@ public class JpaPetRepositoryImpl implements PetRepository {
 	public Collection<Pet> findAll() throws DataAccessException {
 		return this.em.createQuery("SELECT pet FROM Pet pet").getResultList();
 	}
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Page<Pet> findPets(String name, String typeName, Integer ownerId, Pageable pageable) throws DataAccessException {
+        StringBuilder jpql = new StringBuilder("SELECT pet FROM Pet pet WHERE 1=1");
+        StringBuilder countJpql = new StringBuilder("SELECT COUNT(pet) FROM Pet pet WHERE 1=1");
+
+        if (name != null) {
+            jpql.append(" AND pet.name LIKE CONCAT(:name, '%')");
+            countJpql.append(" AND pet.name LIKE CONCAT(:name, '%')");
+        }
+        if (typeName != null) {
+            jpql.append(" AND pet.type.name = :typeName");
+            countJpql.append(" AND pet.type.name = :typeName");
+        }
+        if (ownerId != null) {
+            jpql.append(" AND pet.owner.id = :ownerId");
+            countJpql.append(" AND pet.owner.id = :ownerId");
+        }
+        jpql.append(" ORDER BY pet.id");
+
+        Query query = this.em.createQuery(jpql.toString());
+        Query countQuery = this.em.createQuery(countJpql.toString());
+
+        if (name != null) {
+            query.setParameter("name", name);
+            countQuery.setParameter("name", name);
+        }
+        if (typeName != null) {
+            query.setParameter("typeName", typeName);
+            countQuery.setParameter("typeName", typeName);
+        }
+        if (ownerId != null) {
+            query.setParameter("ownerId", ownerId);
+            countQuery.setParameter("ownerId", ownerId);
+        }
+
+        query.setFirstResult((int) pageable.getOffset());
+        query.setMaxResults(pageable.getPageSize());
+
+        List<Pet> pets = query.getResultList();
+        long total = (long) countQuery.getSingleResult();
+        return new PageImpl<>(pets, pageable, total);
+    }
 
 	@Override
 	public void delete(Pet pet) throws DataAccessException {

@@ -865,6 +865,89 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
+  /v2/pets:
+    get:
+      tags:
+        - pet
+      operationId: listPetsPage
+      summary: Lists pets with pagination and filtering
+      description: Returns a page of pets, optionally filtered by name, type and owner.
+      parameters:
+        - name: name
+          in: query
+          description: Pet name prefix filter.
+          required: false
+          schema:
+            type: string
+            example: Leo
+        - name: typeName
+          in: query
+          description: Pet type name filter (exact match).
+          required: false
+          schema:
+            type: string
+            example: dog
+        - name: ownerId
+          in: query
+          description: Owner ID filter (exact match).
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+            example: 1
+        - name: page
+          in: query
+          description: Zero-based page index.
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+            default: 0
+            example: 0
+        - name: size
+          in: query
+          description: Number of items per page.
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
+            default: 20
+            example: 5
+      responses:
+        200:
+          description: Pet page found and returned.
+          headers:
+            ETag:
+              description: An ID for this version of the response.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PetPage'
+        304:
+          description: Not modified.
+          headers:
+            Etag:
+              description: An ID for this version of the response.
+              schema:
+                type: string
+        400:
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        500:
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
   /pets/{petId}:
     get:
       tags:
@@ -2031,6 +2114,51 @@ components:
         totalElements:
           title: Total elements
           description: Total number of owners matching the request.
+          type: integer
+          format: int64
+          minimum: 0
+          example: 10
+        totalPages:
+          title: Total pages
+          description: Total number of pages matching the request.
+          type: integer
+          format: int32
+          minimum: 0
+          example: 2
+      required:
+        - content
+        - page
+        - size
+        - totalElements
+        - totalPages
+    PetPage:
+      title: Pet page
+      description: A page of pets.
+      type: object
+      properties:
+        content:
+          title: Content
+          description: Pets in the requested page.
+          type: array
+          items:
+            $ref: '#/components/schemas/Pet'
+        page:
+          title: Page
+          description: Zero-based page index.
+          type: integer
+          format: int32
+          minimum: 0
+          example: 0
+        size:
+          title: Size
+          description: Requested page size.
+          type: integer
+          format: int32
+          minimum: 1
+          example: 5
+        totalElements:
+          title: Total elements
+          description: Total number of pets matching the request.
           type: integer
           format: int64
           minimum: 0
