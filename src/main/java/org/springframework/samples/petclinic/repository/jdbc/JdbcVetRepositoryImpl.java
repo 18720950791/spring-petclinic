@@ -159,6 +159,38 @@ public class JdbcVetRepositoryImpl implements VetRepository {
 		this.namedParameterJdbcTemplate.update("DELETE FROM vets WHERE id=:id", params);
 	}
 
+	@Override
+	public Collection<Vet> findBySpecialtyNames(Collection<String> specialtyNames) throws DataAccessException {
+		Map<String, Object> params = new HashMap<>();
+		params.put("names", specialtyNames);
+		List<Vet> vets = this.namedParameterJdbcTemplate.query(
+			"SELECT DISTINCT v.id, v.first_name, v.last_name FROM vets v " +
+			"JOIN vet_specialties vs ON v.id = vs.vet_id " +
+			"JOIN specialties s ON vs.specialty_id = s.id " +
+			"WHERE s.name IN (:names) ORDER BY v.last_name, v.first_name",
+			params, BeanPropertyRowMapper.newInstance(Vet.class));
+
+		final List<Specialty> allSpecialties = this.jdbcTemplate.query(
+			"SELECT id, name FROM specialties", BeanPropertyRowMapper.newInstance(Specialty.class));
+
+		for (Vet vet : vets) {
+			final List<Integer> vetSpecialtiesIds = this.jdbcTemplate.query(
+				"SELECT specialty_id FROM vet_specialties WHERE vet_id=?",
+				new BeanPropertyRowMapper<Integer>() {
+					@Override
+					public Integer mapRow(ResultSet rs, int row) throws SQLException {
+						return rs.getInt(1);
+					}
+				},
+				vet.getId());
+			for (int specialtyId : vetSpecialtiesIds) {
+				Specialty specialty = EntityUtils.getById(allSpecialties, Specialty.class, specialtyId);
+				vet.addSpecialty(specialty);
+			}
+		}
+		return vets;
+	}
+
 	private void updateVetSpecialties(Vet vet) throws DataAccessException {
 		Map<String, Object> params = new HashMap<>();
 		params.put("id", vet.getId());

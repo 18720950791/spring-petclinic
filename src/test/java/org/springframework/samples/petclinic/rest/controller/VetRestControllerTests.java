@@ -23,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.samples.petclinic.mapper.VetMapper;
+import org.springframework.samples.petclinic.model.Specialty;
 import org.springframework.samples.petclinic.model.Vet;
 import org.springframework.samples.petclinic.rest.advice.ExceptionControllerAdvice;
 import org.springframework.samples.petclinic.service.ClinicService;
@@ -71,6 +72,17 @@ class VetRestControllerTests {
     			.build();
     	vets = new ArrayList<Vet>();
 
+    	Specialty radiology = new Specialty();
+    	radiology.setId(1);
+    	radiology.setName("radiology");
+
+    	Specialty surgery = new Specialty();
+    	surgery.setId(2);
+    	surgery.setName("surgery");
+
+    	Specialty dentistry = new Specialty();
+    	dentistry.setId(3);
+    	dentistry.setName("dentistry");
 
     	Vet vet = new Vet();
     	vet.setId(1);
@@ -82,13 +94,30 @@ class VetRestControllerTests {
     	vet.setId(2);
     	vet.setFirstName("Helen");
     	vet.setLastName("Leary");
+    	vet.addSpecialty(radiology);
     	vets.add(vet);
 
     	vet = new Vet();
     	vet.setId(3);
     	vet.setFirstName("Linda");
     	vet.setLastName("Douglas");
+    	vet.addSpecialty(surgery);
+    	vet.addSpecialty(dentistry);
     	vets.add(vet);
+
+    	Vet vet4 = new Vet();
+    	vet4.setId(4);
+    	vet4.setFirstName("Rafael");
+    	vet4.setLastName("Ortega");
+    	vet4.addSpecialty(surgery);
+    	vets.add(vet4);
+
+    	Vet vet5 = new Vet();
+    	vet5.setId(5);
+    	vet5.setFirstName("Henry");
+    	vet5.setLastName("Stevens");
+    	vet5.addSpecialty(radiology);
+    	vets.add(vet5);
     }
 
     @Test
@@ -217,6 +246,52 @@ class VetRestControllerTests {
     	this.mockMvc.perform(delete("/api/vets/999")
     		.content(newVetAsJSON).accept(MediaType.APPLICATION_JSON_VALUE).contentType(MediaType.APPLICATION_JSON_VALUE))
         	.andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(roles="OWNER_ADMIN")
+    void testGetAllVetsForbidden() throws Exception {
+    	this.mockMvc.perform(get("/api/vets")
+        	.accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles="VET_ADMIN")
+    void testGetVetsByUnknownSpecialty() throws Exception {
+    	given(this.clinicService.findVetsBySpecialtyNames(List.of("unknown"))).willReturn(new ArrayList<>());
+    	this.mockMvc.perform(get("/api/vets")
+        	.param("specialty", "unknown")
+        	.accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(roles="VET_ADMIN")
+    void testGetVetsByMultipleSpecialties() throws Exception {
+    	// vets matching radiology OR surgery: Helen(2), Linda(3), Rafael(4), Henry(5) — no duplicates
+    	List<Vet> filtered = List.of(vets.get(1), vets.get(2), vets.get(3), vets.get(4));
+    	given(this.clinicService.findVetsBySpecialtyNames(List.of("radiology", "surgery"))).willReturn(filtered);
+    	this.mockMvc.perform(get("/api/vets")
+        	.param("specialty", "radiology", "surgery")
+        	.accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType("application/json"))
+            .andExpect(jsonPath("$.length()").value(4))
+            .andExpect(jsonPath("$.[0].id").value(2))
+            .andExpect(jsonPath("$.[1].id").value(3))
+            .andExpect(jsonPath("$.[2].id").value(4))
+            .andExpect(jsonPath("$.[3].id").value(5));
+    }
+
+    @Test
+    @WithMockUser(roles="VET_ADMIN")
+    void testGetVetsBySpecialtyEmptyResult() throws Exception {
+    	given(this.clinicService.findVetsBySpecialtyNames(List.of("dermatology"))).willReturn(new ArrayList<>());
+    	this.mockMvc.perform(get("/api/vets")
+        	.param("specialty", "dermatology")
+        	.accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isNotFound());
     }
 
 }

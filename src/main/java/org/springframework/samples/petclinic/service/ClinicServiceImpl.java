@@ -105,6 +105,12 @@ public class ClinicServiceImpl implements ClinicService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Collection<Vet> findVetsBySpecialtyNames(Collection<String> specialtyNames) throws DataAccessException {
+        return vetRepository.findBySpecialtyNames(specialtyNames);
+    }
+
+    @Override
     @Transactional
     public void saveVet(Vet vet) throws DataAccessException {
         vetRepository.save(vet);

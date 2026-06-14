@@ -1541,6 +1541,18 @@ paths:
       operationId: listVets
       summary: Lists vets
       description: Returns an array of vets.
+      parameters:
+        - name: specialty
+          in: query
+          description: Filter vets by specialty name (repeatable, OR semantics).
+          required: false
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+          example: radiology
       responses:
         200:
           description: Vets found and returned.

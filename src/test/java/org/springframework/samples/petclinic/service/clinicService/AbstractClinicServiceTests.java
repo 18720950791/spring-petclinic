@@ -178,6 +178,22 @@ abstract class AbstractClinicServiceTests {
     }
 
     @Test
+    void shouldFindVetsBySpecialtyNames() {
+        // Single specialty: radiology -> Helen Leary(2), Henry Stevens(5)
+        Collection<Vet> vets = this.clinicService.findVetsBySpecialtyNames(List.of("radiology"));
+        assertThat(vets).hasSize(2);
+
+        // Multiple specialties (OR semantics, no duplicates):
+        // radiology -> Helen(2), Henry(5); surgery -> Linda(3), Rafael(4) => 4 distinct vets
+        vets = this.clinicService.findVetsBySpecialtyNames(List.of("radiology", "surgery"));
+        assertThat(vets).hasSize(4);
+
+        // Unknown specialty -> empty
+        vets = this.clinicService.findVetsBySpecialtyNames(List.of("unknown"));
+        assertThat(vets).isEmpty();
+    }
+
+    @Test
     @Transactional
     void shouldAddNewVisitForPet() {
         Pet pet7 = this.clinicService.findPetById(7);

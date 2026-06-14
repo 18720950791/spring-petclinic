@@ -50,6 +50,7 @@ public interface ClinicService {
 	Vet findVetById(int id) throws DataAccessException;
 	Collection<Vet> findVets() throws DataAccessException;
 	Collection<Vet> findAllVets() throws DataAccessException;
+	Collection<Vet> findVetsBySpecialtyNames(Collection<String> specialtyNames) throws DataAccessException;
 	void saveVet(Vet vet) throws DataAccessException;
 	void deleteVet(Vet vet) throws DataAccessException;
 	Owner findOwnerById(int id) throws DataAccessException;
