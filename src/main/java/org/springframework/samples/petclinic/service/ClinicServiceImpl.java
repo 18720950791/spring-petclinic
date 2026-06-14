@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -102,6 +103,15 @@ public class ClinicServiceImpl implements ClinicService {
     @Transactional(readOnly = true)
     public Collection<Vet> findAllVets() throws DataAccessException {
         return vetRepository.findAll();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Collection<Vet> findVetsBySpecialties(Set<String> names) throws DataAccessException {
+        if (names == null || names.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return vetRepository.findBySpecialtyNames(names);
     }
 
     @Override

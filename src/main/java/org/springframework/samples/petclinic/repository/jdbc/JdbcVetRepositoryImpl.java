@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.sql.DataSource;
 
@@ -85,6 +86,46 @@ public class JdbcVetRepositoryImpl implements VetRepository {
             BeanPropertyRowMapper.newInstance(Specialty.class));
 
         // Build each vet's list of specialties.
+        for (Vet vet : vets) {
+            final List<Integer> vetSpecialtiesIds = this.jdbcTemplate.query(
+                "SELECT specialty_id FROM vet_specialties WHERE vet_id=?",
+                new BeanPropertyRowMapper<Integer>() {
+                    @Override
+                    public Integer mapRow(ResultSet rs, int row) throws SQLException {
+                        return rs.getInt(1);
+                    }
+                },
+                vet.getId());
+            for (int specialtyId : vetSpecialtiesIds) {
+                Specialty specialty = EntityUtils.getById(specialties, Specialty.class, specialtyId);
+                vet.addSpecialty(specialty);
+            }
+        }
+        return vets;
+    }
+
+    @Override
+    public Collection<Vet> findBySpecialtyNames(Set<String> names) throws DataAccessException {
+        if (names == null || names.isEmpty()) {
+            return new ArrayList<>();
+        }
+        Map<String, Object> params = new HashMap<>();
+        params.put("names", names);
+        // Retrieve the distinct vets that have at least one of the requested specialties.
+        List<Vet> vets = new ArrayList<>(this.namedParameterJdbcTemplate.query(
+            "SELECT DISTINCT v.id, v.first_name, v.last_name FROM vets v " +
+                "JOIN vet_specialties vs ON v.id = vs.vet_id " +
+                "JOIN specialties s ON vs.specialty_id = s.id " +
+                "WHERE s.name IN (:names) ORDER BY v.last_name, v.first_name",
+            params,
+            BeanPropertyRowMapper.newInstance(Vet.class)));
+
+        // Retrieve the list of all possible specialties.
+        final List<Specialty> specialties = this.jdbcTemplate.query(
+            "SELECT id, name FROM specialties",
+            BeanPropertyRowMapper.newInstance(Specialty.class));
+
+        // Build each matched vet's full list of specialties.
         for (Vet vet : vets) {
             final List<Integer> vetSpecialtiesIds = this.jdbcTemplate.query(
                 "SELECT specialty_id FROM vet_specialties WHERE vet_id=?",

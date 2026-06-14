@@ -1540,7 +1540,25 @@ paths:
         - vet
       operationId: listVets
       summary: Lists vets
-      description: Returns an array of vets.
+      description: >-
+        Returns an array of vets. May optionally be filtered by one or more
+        specialties using the repeatable `specialty` query parameter; a vet is
+        returned if it has at least one of the requested specialties (match any).
+      parameters:
+        - name: specialty
+          in: query
+          required: false
+          description: >-
+            Optional specialty name filter. May be repeated to supply several
+            specialties. A vet is returned if it has at least one of the given
+            specialties (match any). Omit to return all vets.
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+          example: ["radiology", "surgery"]
       responses:
         200:
           description: Vets found and returned.

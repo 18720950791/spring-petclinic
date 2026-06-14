@@ -36,6 +36,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -217,6 +218,71 @@ class VetRestControllerTests {
     	this.mockMvc.perform(delete("/api/vets/999")
     		.content(newVetAsJSON).accept(MediaType.APPLICATION_JSON_VALUE).contentType(MediaType.APPLICATION_JSON_VALUE))
         	.andExpect(status().isNotFound());
+    }
+
+    /**
+     * Permission scenario: an authorized VET_ADMIN may filter vets by specialty.
+     * (Method-level {@code @PreAuthorize} is not enforced by this standalone MockMvc
+     * setup, so this verifies the authorized happy path, consistent with the other
+     * tests in this class.)
+     */
+    @Test
+    @WithMockUser(roles = "VET_ADMIN")
+    void testListVetsBySpecialtyAsVetAdmin() throws Exception {
+        given(this.clinicService.findVetsBySpecialties(Set.of("radiology")))
+            .willReturn(List.of(vets.get(0)));
+        this.mockMvc.perform(get("/api/vets?specialty=radiology")
+                .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType("application/json"))
+            .andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$.[0].id").value(1))
+            .andExpect(jsonPath("$.[0].firstName").value("James"));
+    }
+
+    /**
+     * Multiple specialties use "match any" (OR) semantics and the response contains
+     * no duplicate vets.
+     */
+    @Test
+    @WithMockUser(roles = "VET_ADMIN")
+    void testListVetsByMultipleSpecialtiesMatchAny() throws Exception {
+        given(this.clinicService.findVetsBySpecialties(Set.of("radiology", "surgery")))
+            .willReturn(List.of(vets.get(0), vets.get(1)));
+        this.mockMvc.perform(get("/api/vets?specialty=radiology&specialty=surgery")
+                .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType("application/json"))
+            .andExpect(jsonPath("$.length()").value(2))
+            .andExpect(jsonPath("$.[0].id").value(1))
+            .andExpect(jsonPath("$.[1].id").value(2));
+    }
+
+    /**
+     * An unknown specialty matches no vets, so the endpoint returns 404.
+     */
+    @Test
+    @WithMockUser(roles = "VET_ADMIN")
+    void testListVetsByUnknownSpecialtyReturnsNotFound() throws Exception {
+        given(this.clinicService.findVetsBySpecialties(Set.of("does-not-exist")))
+            .willReturn(new ArrayList<>());
+        this.mockMvc.perform(get("/api/vets?specialty=does-not-exist")
+                .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isNotFound());
+    }
+
+    /**
+     * When the specialty filter yields no vets, the endpoint returns 404 (consistent
+     * with the unfiltered empty-list behavior).
+     */
+    @Test
+    @WithMockUser(roles = "VET_ADMIN")
+    void testListVetsBySpecialtyEmptyResult() throws Exception {
+        given(this.clinicService.findVetsBySpecialties(Set.of("radiology")))
+            .willReturn(new ArrayList<>());
+        this.mockMvc.perform(get("/api/vets?specialty=radiology")
+                .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isNotFound());
     }
 
 }

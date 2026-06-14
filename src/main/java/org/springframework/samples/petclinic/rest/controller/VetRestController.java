@@ -31,7 +31,10 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import jakarta.transaction.Transactional;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -55,8 +58,15 @@ public class VetRestController implements VetsApi {
 
     @PreAuthorize("hasRole(@roles.VET_ADMIN)")
     @Override
-    public ResponseEntity<List<VetDto>> listVets() {
-        List<VetDto> vets = new ArrayList<>(vetMapper.toVetDtos(this.clinicService.findAllVets()));
+    public ResponseEntity<List<VetDto>> listVets(List<String> specialty) {
+        Collection<Vet> foundVets;
+        if (specialty == null || specialty.isEmpty()) {
+            foundVets = this.clinicService.findAllVets();
+        } else {
+            Set<String> specialtyNames = new HashSet<>(specialty);
+            foundVets = this.clinicService.findVetsBySpecialties(specialtyNames);
+        }
+        List<VetDto> vets = new ArrayList<>(vetMapper.toVetDtos(foundVets));
         if (vets.isEmpty()) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }

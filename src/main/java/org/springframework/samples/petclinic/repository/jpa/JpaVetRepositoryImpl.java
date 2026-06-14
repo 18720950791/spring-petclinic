@@ -23,7 +23,9 @@ import org.springframework.stereotype.Repository;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Set;
 
 /**
  * JPA implementation of the {@link VetRepository} interface.
@@ -51,6 +53,18 @@ public class JpaVetRepositoryImpl implements VetRepository {
 	@Override
 	public Collection<Vet> findAll() throws DataAccessException {
 		return this.em.createQuery("SELECT vet FROM Vet vet").getResultList();
+	}
+
+	@Override
+	public Collection<Vet> findBySpecialtyNames(Set<String> names) throws DataAccessException {
+		if (names == null || names.isEmpty()) {
+			return new ArrayList<>();
+		}
+		return this.em.createQuery(
+				"SELECT DISTINCT vet FROM Vet vet JOIN vet.specialties specialty WHERE specialty.name IN :names",
+				Vet.class)
+			.setParameter("names", names)
+			.getResultList();
 	}
 
 	@Override

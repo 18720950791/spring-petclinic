@@ -16,6 +16,7 @@
 package org.springframework.samples.petclinic.repository;
 
 import java.util.Collection;
+import java.util.Set;
 
 import org.springframework.dao.DataAccessException;
 import org.springframework.samples.petclinic.model.Vet;
@@ -38,7 +39,16 @@ public interface VetRepository {
      * @return a <code>Collection</code> of <code>Vet</code>s
      */
     Collection<Vet> findAll() throws DataAccessException;
-    
+
+    /**
+     * Retrieve all <code>Vet</code>s that have at least one of the given specialties
+     * (match any). The result contains no duplicate vets.
+     *
+     * @param names the set of specialty names to match against
+     * @return a <code>Collection</code> of matching <code>Vet</code>s, without duplicates
+     */
+    Collection<Vet> findBySpecialtyNames(Set<String> names) throws DataAccessException;
+
 	Vet findById(int id) throws DataAccessException;
 
 	void save(Vet vet) throws DataAccessException;

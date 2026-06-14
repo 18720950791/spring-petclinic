@@ -16,9 +16,14 @@
 package org.springframework.samples.petclinic.repository.springdatajpa;
 
 import org.springframework.context.annotation.Profile;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
+import org.springframework.data.repository.query.Param;
 import org.springframework.samples.petclinic.model.Vet;
 import org.springframework.samples.petclinic.repository.VetRepository;
+
+import java.util.Collection;
+import java.util.Set;
 
 /**
  * Spring Data JPA specialization of the {@link VetRepository} interface
@@ -29,4 +34,12 @@ import org.springframework.samples.petclinic.repository.VetRepository;
 
 @Profile("spring-data-jpa")
 public interface SpringDataVetRepository extends VetRepository, Repository<Vet, Integer> {
+
+    /**
+     * Find the distinct vets that have at least one of the given specialties (match any).
+     * Declared with an explicit query because the method name is not derivable.
+     */
+    @Override
+    @Query("SELECT DISTINCT vet FROM Vet vet JOIN vet.specialties specialty WHERE specialty.name IN :names")
+    Collection<Vet> findBySpecialtyNames(@Param("names") Set<String> names);
 }
