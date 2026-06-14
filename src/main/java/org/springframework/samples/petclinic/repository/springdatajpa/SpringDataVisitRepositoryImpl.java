@@ -16,8 +16,12 @@
 
 package org.springframework.samples.petclinic.repository.springdatajpa;
 
+import java.time.LocalDate;
+import java.util.List;
+
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.Query;
 
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DataAccessException;
@@ -33,6 +37,21 @@ public class SpringDataVisitRepositoryImpl implements VisitRepositoryOverride {
 
 	@PersistenceContext
     private EntityManager em;
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public List<Visit> findVisits(Integer petId, LocalDate startDate, LocalDate endDate) throws DataAccessException {
+        Query query = this.em.createQuery(
+            "SELECT v FROM Visit v "
+                + "WHERE (:petId IS NULL OR v.pet.id = :petId) "
+                + "AND (:startDate IS NULL OR v.date >= :startDate) "
+                + "AND (:endDate IS NULL OR v.date <= :endDate) "
+                + "ORDER BY v.date DESC");
+        query.setParameter("petId", petId);
+        query.setParameter("startDate", startDate);
+        query.setParameter("endDate", endDate);
+        return query.getResultList();
+	}
 
 	@Override
 	public void delete(Visit visit) throws DataAccessException {

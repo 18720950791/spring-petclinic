@@ -15,6 +15,7 @@
  */
 package org.springframework.samples.petclinic.repository.jpa;
 
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 
@@ -74,6 +75,21 @@ public class JpaVisitRepositoryImpl implements VisitRepository {
 	@Override
 	public Collection<Visit> findAll() throws DataAccessException {
         return this.em.createQuery("SELECT v FROM Visit v").getResultList();
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public List<Visit> findVisits(Integer petId, LocalDate startDate, LocalDate endDate) throws DataAccessException {
+        Query query = this.em.createQuery(
+            "SELECT v FROM Visit v "
+                + "WHERE (:petId IS NULL OR v.pet.id = :petId) "
+                + "AND (:startDate IS NULL OR v.date >= :startDate) "
+                + "AND (:endDate IS NULL OR v.date <= :endDate) "
+                + "ORDER BY v.date DESC");
+        query.setParameter("petId", petId);
+        query.setParameter("startDate", startDate);
+        query.setParameter("endDate", endDate);
+        return query.getResultList();
 	}
 
 	@Override

@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import jakarta.transaction.Transactional;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -54,11 +55,14 @@ public class VisitRestController implements VisitsApi {
 
     @PreAuthorize("hasRole(@roles.OWNER_ADMIN)")
     @Override
-    public ResponseEntity<List<VisitDto>> listVisits() {
-        List<Visit> visits = new ArrayList<>(this.clinicService.findAllVisits());
-        if (visits.isEmpty()) {
+    public ResponseEntity<List<VisitDto>> listVisits(Integer petId, LocalDate dateFrom, LocalDate dateTo) {
+        if (dateFrom != null && dateTo != null && dateFrom.isAfter(dateTo)) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+        if (petId != null && this.clinicService.findPetById(petId) == null) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
+        List<Visit> visits = new ArrayList<>(this.clinicService.findVisits(petId, dateFrom, dateTo));
         return new ResponseEntity<>(new ArrayList<>(visitMapper.toVisitsDto(visits)), HttpStatus.OK);
     }
 

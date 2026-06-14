@@ -17,6 +17,8 @@ package org.springframework.samples.petclinic.repository.jdbc;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
@@ -123,6 +125,32 @@ public class JdbcVisitRepositoryImpl implements VisitRepository {
         return this.namedParameterJdbcTemplate.query(
             "SELECT visits.id as visit_id, pets.id as pets_id, visit_date, description FROM visits LEFT JOIN pets ON visits.pet_id = pets.id",
             params, new JdbcVisitRowMapperExt());
+    }
+
+    @Override
+    public List<Visit> findVisits(Integer petId, LocalDate startDate, LocalDate endDate) throws DataAccessException {
+        StringBuilder sql = new StringBuilder(
+            "SELECT visits.id as visit_id, pets.id as pets_id, visit_date, description "
+                + "FROM visits LEFT JOIN pets ON visits.pet_id = pets.id");
+        List<String> conditions = new ArrayList<>();
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        if (petId != null) {
+            conditions.add("visits.pet_id = :petId");
+            params.addValue("petId", petId);
+        }
+        if (startDate != null) {
+            conditions.add("visit_date >= :startDate");
+            params.addValue("startDate", startDate);
+        }
+        if (endDate != null) {
+            conditions.add("visit_date <= :endDate");
+            params.addValue("endDate", endDate);
+        }
+        if (!conditions.isEmpty()) {
+            sql.append(" WHERE ").append(String.join(" AND ", conditions));
+        }
+        sql.append(" ORDER BY visit_date DESC");
+        return this.namedParameterJdbcTemplate.query(sql.toString(), params, new JdbcVisitRowMapperExt());
     }
 
     @Override

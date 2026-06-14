@@ -288,6 +288,46 @@ abstract class AbstractClinicServiceTests {
     }
 
     @Test
+    void shouldFindVisitsByPetIdFilter() {
+        Collection<Visit> visits = this.clinicService.findVisits(7, null, null);
+        List<Integer> ids = visits.stream().map(Visit::getId).collect(Collectors.toList());
+        assertThat(ids).containsExactly(4, 1);
+    }
+
+    @Test
+    void shouldFindVisitsByDateRange() {
+        Collection<Visit> visits = this.clinicService.findVisits(null, LocalDate.of(2013, 1, 2), LocalDate.of(2013, 1, 3));
+        List<Integer> ids = visits.stream().map(Visit::getId).collect(Collectors.toList());
+        assertThat(ids).containsExactly(3, 2);
+    }
+
+    @Test
+    void shouldFindVisitsByPetIdAndDateRange() {
+        Collection<Visit> visits = this.clinicService.findVisits(8, LocalDate.of(2013, 1, 3), LocalDate.of(2013, 1, 3));
+        List<Integer> ids = visits.stream().map(Visit::getId).collect(Collectors.toList());
+        assertThat(ids).containsExactly(3);
+    }
+
+    @Test
+    void shouldFindVisitsOrderedByDateDesc() {
+        Collection<Visit> visits = this.clinicService.findVisits(null, null, null);
+        List<Integer> ids = visits.stream().map(Visit::getId).collect(Collectors.toList());
+        assertThat(ids).containsExactly(4, 3, 2, 1);
+        List<LocalDate> dates = visits.stream().map(Visit::getDate).collect(Collectors.toList());
+        assertThat(dates).containsExactly(
+            LocalDate.of(2013, 1, 4),
+            LocalDate.of(2013, 1, 3),
+            LocalDate.of(2013, 1, 2),
+            LocalDate.of(2013, 1, 1));
+    }
+
+    @Test
+    void shouldFindNoVisitsWhenNoneMatch() {
+        Collection<Visit> visits = this.clinicService.findVisits(7, LocalDate.of(2013, 6, 1), LocalDate.of(2013, 6, 30));
+        assertThat(visits).isEmpty();
+    }
+
+    @Test
     void shouldFindVetDyId(){
     	Vet vet = this.clinicService.findVetById(1);
     	assertThat(vet.getFirstName()).isEqualTo("James");

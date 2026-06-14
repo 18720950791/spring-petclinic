@@ -137,7 +137,7 @@ class VisitRestControllerTests {
     @Test
     @WithMockUser(roles="OWNER_ADMIN")
     void testGetAllVisitsSuccess() throws Exception {
-    	given(this.clinicService.findAllVisits()).willReturn(visits);
+    	given(this.clinicService.findVisits(null, null, null)).willReturn(visits);
         this.mockMvc.perform(get("/api/visits")
         	.accept(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk())
@@ -150,12 +150,77 @@ class VisitRestControllerTests {
 
     @Test
     @WithMockUser(roles="OWNER_ADMIN")
-    void testGetAllVisitsNotFound() throws Exception {
+    void testGetAllVisitsEmpty() throws Exception {
     	visits.clear();
-    	given(this.clinicService.findAllVisits()).willReturn(visits);
+    	given(this.clinicService.findVisits(null, null, null)).willReturn(visits);
         this.mockMvc.perform(get("/api/visits")
         	.accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType("application/json"))
+            .andExpect(jsonPath("$").isArray())
+            .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    @WithMockUser(roles="OWNER_ADMIN")
+    void testListVisitsByPetId() throws Exception {
+    	given(this.clinicService.findPetById(8)).willReturn(visits.get(0).getPet());
+    	given(this.clinicService.findVisits(8, null, null)).willReturn(visits);
+        this.mockMvc.perform(get("/api/visits?petId=8")
+        	.accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType("application/json"))
+        	.andExpect(jsonPath("$.[0].id").value(2))
+        	.andExpect(jsonPath("$.[0].description").value("rabies shot"))
+        	.andExpect(jsonPath("$.[1].id").value(3))
+        	.andExpect(jsonPath("$.[1].description").value("neutered"));
+    }
+
+    @Test
+    @WithMockUser(roles="OWNER_ADMIN")
+    void testListVisitsByDateRange() throws Exception {
+    	LocalDate from = LocalDate.of(2013, 1, 1);
+    	LocalDate to = LocalDate.of(2013, 1, 4);
+    	given(this.clinicService.findVisits(null, from, to)).willReturn(visits);
+        this.mockMvc.perform(get("/api/visits?dateFrom=2013-01-01&dateTo=2013-01-04")
+        	.accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType("application/json"))
+            .andExpect(jsonPath("$.length()").value(2))
+        	.andExpect(jsonPath("$.[0].id").value(2))
+        	.andExpect(jsonPath("$.[1].id").value(3));
+    }
+
+    @Test
+    @WithMockUser(roles="OWNER_ADMIN")
+    void testListVisitsInvalidDateRange() throws Exception {
+        this.mockMvc.perform(get("/api/visits?dateFrom=2013-01-04&dateTo=2013-01-01")
+        	.accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(roles="OWNER_ADMIN")
+    void testListVisitsPetNotFound() throws Exception {
+        given(this.clinicService.findPetById(999)).willReturn(null);
+        this.mockMvc.perform(get("/api/visits?petId=999")
+        	.accept(MediaType.APPLICATION_JSON))
             .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(roles="OWNER_ADMIN")
+    void testListVisitsNoMatches() throws Exception {
+    	LocalDate from = LocalDate.of(2013, 6, 1);
+    	LocalDate to = LocalDate.of(2013, 6, 30);
+    	given(this.clinicService.findPetById(8)).willReturn(visits.get(0).getPet());
+    	given(this.clinicService.findVisits(8, from, to)).willReturn(new ArrayList<>());
+        this.mockMvc.perform(get("/api/visits?petId=8&dateFrom=2013-06-01&dateTo=2013-06-30")
+        	.accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType("application/json"))
+            .andExpect(jsonPath("$").isArray())
+            .andExpect(jsonPath("$.length()").value(0));
     }
 
     @Test

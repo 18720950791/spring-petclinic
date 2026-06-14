@@ -1038,7 +1038,33 @@ paths:
         - visit
       operationId: listVisits
       summary: Lists visits
-      description: Returns an array of visit .
+      description: Returns an array of visit, optionally filtered by pet and visit date range, ordered by visit date descending.
+      parameters:
+        - name: petId
+          in: query
+          description: Only return visits booked for the pet with this ID.
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+            example: 1
+        - name: dateFrom
+          in: query
+          description: Only return visits on or after this date (inclusive).
+          required: false
+          schema:
+            type: string
+            format: date
+            example: '2013-01-01'
+        - name: dateTo
+          in: query
+          description: Only return visits on or before this date (inclusive).
+          required: false
+          schema:
+            type: string
+            format: date
+            example: '2013-01-31'
       responses:
         200:
           description: visits found and returned.
@@ -1060,6 +1086,18 @@ paths:
               description: An ID for this version of the response.
               schema:
                 type: string
+        400:
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        404:
+          description: Pet not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
         500:
           description: Server error.
           content:

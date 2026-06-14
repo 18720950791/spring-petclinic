@@ -16,6 +16,9 @@
 
 package org.springframework.samples.petclinic.repository.springdatajpa;
 
+import java.time.LocalDate;
+import java.util.List;
+
 import org.springframework.context.annotation.Profile;
 import org.springframework.samples.petclinic.model.Visit;
 
@@ -26,7 +29,9 @@ import org.springframework.samples.petclinic.model.Visit;
 
 @Profile("spring-data-jpa")
 public interface VisitRepositoryOverride {
-	
+
+	List<Visit> findVisits(Integer petId, LocalDate startDate, LocalDate endDate);
+
 	void delete(Visit visit);
 
 }
