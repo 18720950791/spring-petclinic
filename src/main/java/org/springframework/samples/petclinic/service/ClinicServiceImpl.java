@@ -25,6 +25,7 @@ import org.springframework.samples.petclinic.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -84,6 +85,21 @@ public class ClinicServiceImpl implements ClinicService {
     @Transactional(readOnly = true)
     public Collection<Visit> findAllVisits() throws DataAccessException {
         return visitRepository.findAll();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Visit> findFilteredVisits(Integer petId, LocalDate dateFrom, LocalDate dateTo) throws DataAccessException {
+        if (dateFrom != null && dateTo != null && dateFrom.isAfter(dateTo)) {
+            throw new IllegalArgumentException("dateFrom must not be after dateTo");
+        }
+        if (petId != null) {
+            Pet pet = findPetById(petId);
+            if (pet == null) {
+                throw new IllegalArgumentException("Pet not found with id: " + petId);
+            }
+        }
+        return visitRepository.findByFilters(petId, dateFrom, dateTo);
     }
 
     @Override

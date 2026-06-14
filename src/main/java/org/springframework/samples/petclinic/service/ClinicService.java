@@ -15,6 +15,7 @@
  */
 package org.springframework.samples.petclinic.service;
 
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -45,6 +46,18 @@ public interface ClinicService {
 	Collection<Visit> findVisitsByPetId(int petId);
 	Visit findVisitById(int visitId) throws DataAccessException;
 	Collection<Visit> findAllVisits() throws DataAccessException;
+
+	/**
+	 * Find visits matching the given optional filters, ordered by visit date descending.
+	 *
+	 * @param petId    optional pet ID to filter by (if non-null, pet must exist)
+	 * @param dateFrom optional start date (inclusive)
+	 * @param dateTo   optional end date (inclusive)
+	 * @return matching visits ordered by date descending
+	 * @throws IllegalArgumentException if dateFrom is after dateTo, or petId refers to a non-existent pet
+	 */
+	List<Visit> findFilteredVisits(Integer petId, LocalDate dateFrom, LocalDate dateTo) throws DataAccessException;
+
 	void saveVisit(Visit visit) throws DataAccessException;
 	void deleteVisit(Visit visit) throws DataAccessException;
 	Vet findVetById(int id) throws DataAccessException;

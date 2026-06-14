@@ -15,6 +15,7 @@
  */
 package org.springframework.samples.petclinic.repository;
 
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 
@@ -43,11 +44,21 @@ public interface VisitRepository {
     void save(Visit visit) throws DataAccessException;
 
     List<Visit> findByPetId(Integer petId);
-    
-	Visit findById(int id) throws DataAccessException;
-	
-	Collection<Visit> findAll() throws DataAccessException;
 
-	void delete(Visit visit) throws DataAccessException;
+    Visit findById(int id) throws DataAccessException;
+
+    Collection<Visit> findAll() throws DataAccessException;
+
+    /**
+     * Find visits matching the given optional filters, ordered by visit date descending.
+     *
+     * @param petId    optional pet ID to filter by
+     * @param dateFrom optional start date (inclusive)
+     * @param dateTo   optional end date (inclusive)
+     * @return matching visits ordered by date descending
+     */
+    List<Visit> findByFilters(Integer petId, LocalDate dateFrom, LocalDate dateTo) throws DataAccessException;
+
+    void delete(Visit visit) throws DataAccessException;
 
 }

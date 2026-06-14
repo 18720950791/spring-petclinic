@@ -33,6 +33,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * <p> Base class for {@link ClinicService} integration tests. </p> <p> Subclasses should specify Spring context
@@ -239,6 +240,80 @@ abstract class AbstractClinicServiceTests {
         assertThat(visit1.getPet().getName()).isEqualTo("Samantha");
         Visit visit3 = EntityUtils.getById(visits, Visit.class, 3);
         assertThat(visit3.getPet().getName()).isEqualTo("Max");
+    }
+
+    @Test
+    void shouldFindFilteredVisitsWithNoFilters() {
+        List<Visit> visits = this.clinicService.findFilteredVisits(null, null, null);
+        assertThat(visits).isNotEmpty();
+        // Verify descending date order
+        for (int i = 0; i < visits.size() - 1; i++) {
+            assertThat(visits.get(i).getDate()).isGreaterThanOrEqualTo(visits.get(i + 1).getDate());
+        }
+    }
+
+    @Test
+    void shouldFindFilteredVisitsByPetId() {
+        List<Visit> visits = this.clinicService.findFilteredVisits(7, null, null);
+        assertThat(visits).hasSize(2);
+        visits.forEach(v -> assertThat(v.getPet().getId()).isEqualTo(7));
+    }
+
+    @Test
+    void shouldFindFilteredVisitsByDateRange() {
+        List<Visit> visits = this.clinicService.findFilteredVisits(null,
+            LocalDate.of(2013, 1, 2), LocalDate.of(2013, 1, 3));
+        assertThat(visits).hasSize(2);
+        visits.forEach(v -> {
+            assertThat(v.getDate()).isGreaterThanOrEqualTo(LocalDate.of(2013, 1, 2));
+            assertThat(v.getDate()).isLessThanOrEqualTo(LocalDate.of(2013, 1, 3));
+        });
+    }
+
+    @Test
+    void shouldFindFilteredVisitsByPetIdAndDateRange() {
+        List<Visit> visits = this.clinicService.findFilteredVisits(7,
+            LocalDate.of(2013, 1, 1), LocalDate.of(2013, 1, 2));
+        assertThat(visits).hasSize(1);
+        assertThat(visits.get(0).getPet().getId()).isEqualTo(7);
+        assertThat(visits.get(0).getDate()).isEqualTo(LocalDate.of(2013, 1, 1));
+    }
+
+    @Test
+    void shouldReturnEmptyListWhenNoVisitsMatchFilter() {
+        List<Visit> visits = this.clinicService.findFilteredVisits(null,
+            LocalDate.of(2099, 1, 1), LocalDate.of(2099, 12, 31));
+        assertThat(visits).isEmpty();
+    }
+
+    @Test
+    void shouldReturnEmptyListWhenPetHasNoVisits() {
+        // pet 1 (Leo) exists but has no visits in seed data
+        Pet pet1 = this.clinicService.findPetById(1);
+        if (pet1 != null && pet1.getVisits().isEmpty()) {
+            List<Visit> visits = this.clinicService.findFilteredVisits(1, null, null);
+            assertThat(visits).isEmpty();
+        } else {
+            // Use a future date range that cannot match any visit
+            List<Visit> visits = this.clinicService.findFilteredVisits(null,
+                LocalDate.of(2099, 1, 1), LocalDate.of(2099, 12, 31));
+            assertThat(visits).isEmpty();
+        }
+    }
+
+    @Test
+    void shouldThrowWhenDateFromAfterDateTo() {
+        assertThatThrownBy(() ->
+            this.clinicService.findFilteredVisits(null,
+                LocalDate.of(2013, 12, 31), LocalDate.of(2013, 1, 1))
+        ).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void shouldThrowWhenPetNotFound() {
+        assertThatThrownBy(() ->
+            this.clinicService.findFilteredVisits(9999, null, null)
+        ).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

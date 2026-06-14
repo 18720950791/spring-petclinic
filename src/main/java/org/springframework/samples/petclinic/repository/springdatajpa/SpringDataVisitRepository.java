@@ -15,8 +15,14 @@
  */
 package org.springframework.samples.petclinic.repository.springdatajpa;
 
+import java.time.LocalDate;
+import java.util.Collection;
+import java.util.List;
+
 import org.springframework.context.annotation.Profile;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
+import org.springframework.data.repository.query.Param;
 import org.springframework.samples.petclinic.model.Visit;
 import org.springframework.samples.petclinic.repository.VisitRepository;
 
@@ -29,4 +35,24 @@ import org.springframework.samples.petclinic.repository.VisitRepository;
 
 @Profile("spring-data-jpa")
 public interface SpringDataVisitRepository extends VisitRepository, Repository<Visit, Integer>, VisitRepositoryOverride {
+
+    @Override
+    @Query("SELECT v FROM Visit v WHERE v.pet.id = :petId ORDER BY v.date DESC")
+    List<Visit> findByPetId(@Param("petId") Integer petId);
+
+    @Override
+    @Query("SELECT v FROM Visit v ORDER BY v.date DESC")
+    Collection<Visit> findAll();
+
+    @Override
+    @Query("SELECT v FROM Visit v WHERE " +
+           "(:petId IS NULL OR v.pet.id = :petId) AND " +
+           "(:dateFrom IS NULL OR v.date >= :dateFrom) AND " +
+           "(:dateTo IS NULL OR v.date <= :dateTo) " +
+           "ORDER BY v.date DESC")
+    List<Visit> findByFilters(
+        @Param("petId") Integer petId,
+        @Param("dateFrom") LocalDate dateFrom,
+        @Param("dateTo") LocalDate dateTo);
+
 }

@@ -17,6 +17,7 @@ package org.springframework.samples.petclinic.repository.jdbc;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
@@ -91,7 +92,7 @@ public class JdbcVisitRepositoryImpl implements VisitRepository {
             new JdbcPetRowMapper());
 
         List<Visit> visits = this.namedParameterJdbcTemplate.query(
-            "SELECT id as visit_id, visit_date, description FROM visits WHERE pet_id=:id",
+            "SELECT id as visit_id, visit_date, description FROM visits WHERE pet_id=:id ORDER BY visit_date DESC",
             params, new JdbcVisitRowMapper());
 
         for (Visit visit : visits) {
@@ -121,8 +122,29 @@ public class JdbcVisitRepositoryImpl implements VisitRepository {
     public Collection<Visit> findAll() throws DataAccessException {
         Map<String, Object> params = new HashMap<>();
         return this.namedParameterJdbcTemplate.query(
-            "SELECT visits.id as visit_id, pets.id as pets_id, visit_date, description FROM visits LEFT JOIN pets ON visits.pet_id = pets.id",
+            "SELECT visits.id as visit_id, pets.id as pets_id, visit_date, description FROM visits LEFT JOIN pets ON visits.pet_id = pets.id ORDER BY visit_date DESC",
             params, new JdbcVisitRowMapperExt());
+    }
+
+    @Override
+    public List<Visit> findByFilters(Integer petId, LocalDate dateFrom, LocalDate dateTo) throws DataAccessException {
+        StringBuilder sql = new StringBuilder(
+            "SELECT visits.id as visit_id, pets.id as pets_id, visit_date, description FROM visits LEFT JOIN pets ON visits.pet_id = pets.id WHERE 1=1");
+        Map<String, Object> params = new HashMap<>();
+        if (petId != null) {
+            sql.append(" AND visits.pet_id = :petId");
+            params.put("petId", petId);
+        }
+        if (dateFrom != null) {
+            sql.append(" AND visit_date >= :dateFrom");
+            params.put("dateFrom", java.sql.Date.valueOf(dateFrom));
+        }
+        if (dateTo != null) {
+            sql.append(" AND visit_date <= :dateTo");
+            params.put("dateTo", java.sql.Date.valueOf(dateTo));
+        }
+        sql.append(" ORDER BY visit_date DESC");
+        return this.namedParameterJdbcTemplate.query(sql.toString(), params, new JdbcVisitRowMapperExt());
     }
 
     @Override

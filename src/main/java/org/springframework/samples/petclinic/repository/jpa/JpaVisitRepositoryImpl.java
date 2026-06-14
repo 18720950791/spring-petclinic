@@ -15,12 +15,14 @@
  */
 package org.springframework.samples.petclinic.repository.jpa;
 
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Query;
+import jakarta.persistence.TypedQuery;
 
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DataAccessException;
@@ -60,25 +62,59 @@ public class JpaVisitRepositoryImpl implements VisitRepository {
     @Override
     @SuppressWarnings("unchecked")
     public List<Visit> findByPetId(Integer petId) {
-        Query query = this.em.createQuery("SELECT v FROM Visit v where v.pet.id= :id");
+        Query query = this.em.createQuery("SELECT v FROM Visit v WHERE v.pet.id = :id ORDER BY v.date DESC");
         query.setParameter("id", petId);
         return query.getResultList();
     }
 
-	@Override
-	public Visit findById(int id) throws DataAccessException {
-		return this.em.find(Visit.class, id);
-	}
+    @Override
+    public Visit findById(int id) throws DataAccessException {
+        return this.em.find(Visit.class, id);
+    }
 
-	@SuppressWarnings("unchecked")
-	@Override
-	public Collection<Visit> findAll() throws DataAccessException {
-        return this.em.createQuery("SELECT v FROM Visit v").getResultList();
-	}
+    @SuppressWarnings("unchecked")
+    @Override
+    public Collection<Visit> findAll() throws DataAccessException {
+        return this.em.createQuery("SELECT v FROM Visit v ORDER BY v.date DESC").getResultList();
+    }
 
-	@Override
-	public void delete(Visit visit) throws DataAccessException {
+    @Override
+    public List<Visit> findByFilters(Integer petId, LocalDate dateFrom, LocalDate dateTo) throws DataAccessException {
+        StringBuilder jpql = new StringBuilder("SELECT v FROM Visit v");
+        if (petId != null || dateFrom != null || dateTo != null) {
+            jpql.append(" WHERE");
+            boolean hasCondition = false;
+            if (petId != null) {
+                jpql.append(" v.pet.id = :petId");
+                hasCondition = true;
+            }
+            if (dateFrom != null) {
+                if (hasCondition) jpql.append(" AND");
+                jpql.append(" v.date >= :dateFrom");
+                hasCondition = true;
+            }
+            if (dateTo != null) {
+                if (hasCondition) jpql.append(" AND");
+                jpql.append(" v.date <= :dateTo");
+            }
+        }
+        jpql.append(" ORDER BY v.date DESC");
+        TypedQuery<Visit> query = this.em.createQuery(jpql.toString(), Visit.class);
+        if (petId != null) {
+            query.setParameter("petId", petId);
+        }
+        if (dateFrom != null) {
+            query.setParameter("dateFrom", dateFrom);
+        }
+        if (dateTo != null) {
+            query.setParameter("dateTo", dateTo);
+        }
+        return query.getResultList();
+    }
+
+    @Override
+    public void delete(Visit visit) throws DataAccessException {
         this.em.remove(this.em.contains(visit) ? visit : this.em.merge(visit));
-	}
+    }
 
 }

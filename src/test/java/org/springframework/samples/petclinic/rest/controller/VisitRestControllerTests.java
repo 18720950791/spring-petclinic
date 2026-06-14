@@ -39,8 +39,11 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -137,7 +140,7 @@ class VisitRestControllerTests {
     @Test
     @WithMockUser(roles="OWNER_ADMIN")
     void testGetAllVisitsSuccess() throws Exception {
-    	given(this.clinicService.findAllVisits()).willReturn(visits);
+    	given(this.clinicService.findFilteredVisits(any(), any(), any())).willReturn(visits);
         this.mockMvc.perform(get("/api/visits")
         	.accept(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk())
@@ -151,10 +154,85 @@ class VisitRestControllerTests {
     @Test
     @WithMockUser(roles="OWNER_ADMIN")
     void testGetAllVisitsNotFound() throws Exception {
-    	visits.clear();
-    	given(this.clinicService.findAllVisits()).willReturn(visits);
+    	given(this.clinicService.findFilteredVisits(any(), any(), any())).willReturn(Collections.emptyList());
         this.mockMvc.perform(get("/api/visits")
         	.accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(roles="OWNER_ADMIN")
+    void testGetVisitsFilteredByPetId() throws Exception {
+        given(this.clinicService.findFilteredVisits(eq(8), any(), any())).willReturn(visits);
+        this.mockMvc.perform(get("/api/visits")
+                .param("petId", "8")
+                .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType("application/json"))
+            .andExpect(jsonPath("$.[0].id").value(2))
+            .andExpect(jsonPath("$.[1].id").value(3));
+    }
+
+    @Test
+    @WithMockUser(roles="OWNER_ADMIN")
+    void testGetVisitsFilteredByDateRange() throws Exception {
+        given(this.clinicService.findFilteredVisits(any(), any(), any())).willReturn(visits);
+        this.mockMvc.perform(get("/api/visits")
+                .param("dateFrom", "2013-01-01")
+                .param("dateTo", "2013-12-31")
+                .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType("application/json"))
+            .andExpect(jsonPath("$.length()").value(2));
+    }
+
+    @Test
+    @WithMockUser(roles="OWNER_ADMIN")
+    void testGetVisitsFilteredByAllParams() throws Exception {
+        Visit singleVisit = new ArrayList<>(visits).subList(0, 1);
+        given(this.clinicService.findFilteredVisits(eq(8), any(), any())).willReturn(singleVisit);
+        this.mockMvc.perform(get("/api/visits")
+                .param("petId", "8")
+                .param("dateFrom", "2013-01-01")
+                .param("dateTo", "2013-01-02")
+                .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$.[0].id").value(2));
+    }
+
+    @Test
+    @WithMockUser(roles="OWNER_ADMIN")
+    void testGetVisitsInvalidDateRange() throws Exception {
+        given(this.clinicService.findFilteredVisits(any(), any(), any()))
+            .willThrow(new IllegalArgumentException("dateFrom must not be after dateTo"));
+        this.mockMvc.perform(get("/api/visits")
+                .param("dateFrom", "2013-12-31")
+                .param("dateTo", "2013-01-01")
+                .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(roles="OWNER_ADMIN")
+    void testGetVisitsPetNotFound() throws Exception {
+        given(this.clinicService.findFilteredVisits(eq(999), any(), any()))
+            .willThrow(new IllegalArgumentException("Pet not found with id: 999"));
+        this.mockMvc.perform(get("/api/visits")
+                .param("petId", "999")
+                .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(roles="OWNER_ADMIN")
+    void testGetVisitsNoMatchingRecords() throws Exception {
+        given(this.clinicService.findFilteredVisits(eq(8), any(), any())).willReturn(Collections.emptyList());
+        this.mockMvc.perform(get("/api/visits")
+                .param("petId", "8")
+                .param("dateFrom", "2099-01-01")
+                .param("dateTo", "2099-12-31")
+                .accept(MediaType.APPLICATION_JSON))
             .andExpect(status().isNotFound());
     }
 
